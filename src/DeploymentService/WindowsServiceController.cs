@@ -3,8 +3,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
-using System.Threading;
 using System.Web.Http;
+using Polly;
 using Vertica.Integration.Infrastructure.Windows;
 
 namespace Vertica.DeploymentService
@@ -18,6 +18,48 @@ namespace Vertica.DeploymentService
 		{
 			_windowsServices = windows.WindowsServices();
 		}
+
+	    [HttpGet]
+	    [Route("status")]
+	    public IHttpActionResult GetStatus([FromUri] string serviceName = null)
+	    {
+	        if (string.IsNullOrWhiteSpace(serviceName))
+	            return BadRequest($"Missing required value for querystring '{nameof(serviceName)}'.");
+
+            bool exists = _windowsServices.Exists(serviceName);
+
+            if (!exists)
+                return NotFound();
+
+	        return Ok(_windowsServices.GetStatus(serviceName));
+	    }
+        
+        [HttpPut]
+	    [Route("status")]
+	    public IHttpActionResult UpdateStatus([FromUri] string serviceName = null, [FromUri] bool? start = null)
+	    {
+            if (string.IsNullOrWhiteSpace(serviceName))
+                return BadRequest($"Missing required value for querystring '{nameof(serviceName)}'.");
+
+            if (start == null)
+                return BadRequest($"Missing required value for querystring '{nameof(start)}'.");
+
+            bool exists = _windowsServices.Exists(serviceName);
+
+            if (!exists)
+                return NotFound();
+
+            if (start.Value)
+            {
+                _windowsServices.Start(serviceName);
+            }
+            else
+            {
+                _windowsServices.Stop(serviceName);
+            }
+
+            return Ok(_windowsServices.GetStatus(serviceName));
+	    }
 
 		[HttpPost]
 		[Route("")]
@@ -42,36 +84,31 @@ namespace Vertica.DeploymentService
                 bool exists = _windowsServices.Exists(serviceName);
 
 			    if (exists)
-			    {
-                    // TODO: test with a very difficult windows service
                     _windowsServices.Stop(serviceName, TimeSpan.FromSeconds(10));
 
-                    // Allow the OS time to have locks removed from the files
-                    // TODO: Figure out whether we can improve on this - programatically detect file-locks
-                    Thread.Sleep(TimeSpan.FromSeconds(30));
-                }
+                var backup = new DirectoryInfo($@"{directory.Parent?.FullName}\Backups");
+                backup.Create();
 
-                try
-				{
-					var backup = new DirectoryInfo($@"{directory.Parent?.FullName}\Backups");
-					backup.Create();
+                // TODO: Delete backups older than XX-days
 
-					directory.MoveTo($@"{backup.FullName}\Backup_{directory.Name}_{DateTime.Now:yyyyMMddHHmmss}");
-					ZipFile.CreateFromDirectory(directory.FullName, $@"{backup.FullName}\{directory.Name}.zip");
-					directory.Delete(recursive: true);
+                ZipArchive[] zipCopy = { zip };
 
-					zip.ExtractToDirectory(localDirectory);
-				}
-				catch
-				{
-				    if (exists)
-				    {
-                        // If deployment fails - start it again.
-                        _windowsServices.Start(serviceName);
-                    }
-
-					throw;
-				}
+                Policy
+                    .Handle<IOException>()
+                    .WaitAndRetry(new[]
+                    {
+                        TimeSpan.FromSeconds(5),
+                        TimeSpan.FromSeconds(10),
+                        TimeSpan.FromSeconds(15),
+                        TimeSpan.FromSeconds(20)
+                    })
+                    .Execute(() =>
+                    {
+                        directory.MoveTo($@"{backup.FullName}\Backup_{directory.Name}_{DateTime.Now:yyyyMMddHHmmss}");
+                        ZipFile.CreateFromDirectory(directory.FullName, $@"{backup.FullName}\{directory.Name}.zip");
+                        directory.Delete(recursive: true);
+                        zipCopy[0].ExtractToDirectory(localDirectory);
+                    });
 
 			    if (exists)
 			    {
@@ -81,13 +118,12 @@ namespace Vertica.DeploymentService
                     }
                     catch (Exception ex)
                     {
-                        return BadRequest($"Service deployed but service failed to start: {ex}");
+                        return BadRequest($"Service deployed but service '{serviceName}' failed to start: {ex}");
                     }
                 }
 			}
 
-            // TODO: Return with a detailed description of the progress (e.g. if the service does not exist - make sure to let users know how to create it)
-			return Ok();
+		    return Ok(_windowsServices.GetStatus(serviceName));
 		}
 
 		[HttpGet]

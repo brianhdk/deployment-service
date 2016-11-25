@@ -1,4 +1,5 @@
-﻿using Vertica.Integration.WebApi;
+﻿using Vertica.Integration.Domain.LiteServer;
+using Vertica.Integration.WebApi;
 
 namespace Vertica.DeploymentService
 {
@@ -10,6 +11,8 @@ namespace Vertica.DeploymentService
                 .Database(database => database.IntegrationDb(integrationDb => integrationDb.Disable()))
                 .Tasks(tasks => tasks.Clear())
                 .Hosts(hosts => hosts.Clear().Host<DeploymentHelperHost>())
+                .UseLiteServer(liteServer => liteServer
+                    .AddFromAssemblyOfThis<Program>())
                 .UseWebApi(webApi => webApi
                     .AddToLiteServer()
                     .AddFromAssemblyOfThis<Program>()));

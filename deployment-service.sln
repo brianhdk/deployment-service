@@ -19,6 +19,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{01D19B
 		.nuget\packages.config = .nuget\packages.config
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".powershell", ".powershell", "{5D914148-3247-4F58-BE4C-EF90390ABF71}"
+	ProjectSection(SolutionItems) = preProject
+		src\PowerShell\DeploymentService-Helpers.ps1 = src\PowerShell\DeploymentService-Helpers.ps1
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

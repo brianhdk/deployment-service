@@ -31,56 +31,62 @@ namespace Vertica.DeploymentService
 			if (firstFile == null)
 				return BadRequest("Missing file.");
 
-			bool exists = _windowsServices.Exists(serviceName);
-
-			if (!exists)
-				return BadRequest($"Service with name '{serviceName}' does not exist.");
-
 			var directory = new DirectoryInfo(localDirectory);
 
 			if (!directory.Exists)
-				return BadRequest($"Local Directory '{localDirectory}' was not found.");
+			    directory.Create();
 
 			using (Stream stream = firstFile.ReadAsStreamAsync().Result)
+			using (ZipArchive zip = new ZipArchive(stream, ZipArchiveMode.Read))
 			{
-				using (ZipArchive zip = new ZipArchive(stream, ZipArchiveMode.Read))
-				{
-					_windowsServices.Stop(serviceName);
+                bool exists = _windowsServices.Exists(serviceName);
 
-					// Allow the OS time to have locks removed from the files
+			    if (exists)
+			    {
+                    // TODO: test with a very difficult windows service
+                    _windowsServices.Stop(serviceName, TimeSpan.FromSeconds(10));
+
+                    // Allow the OS time to have locks removed from the files
                     // TODO: Figure out whether we can improve on this - programatically detect file-locks
-					Thread.Sleep(TimeSpan.FromSeconds(30));
+                    Thread.Sleep(TimeSpan.FromSeconds(30));
+                }
 
-					try
-					{
-						var backup = new DirectoryInfo($@"{directory.Parent?.FullName}\Backups");
-						backup.Create();
+                try
+				{
+					var backup = new DirectoryInfo($@"{directory.Parent?.FullName}\Backups");
+					backup.Create();
 
-						directory.MoveTo($@"{backup.FullName}\Backup_{directory.Name}_{DateTime.Now:yyyyMMddHHmmss}");
-						ZipFile.CreateFromDirectory(directory.FullName, $@"{backup.FullName}\{directory.Name}.zip");
-						directory.Delete(recursive: true);
+					directory.MoveTo($@"{backup.FullName}\Backup_{directory.Name}_{DateTime.Now:yyyyMMddHHmmss}");
+					ZipFile.CreateFromDirectory(directory.FullName, $@"{backup.FullName}\{directory.Name}.zip");
+					directory.Delete(recursive: true);
 
-						zip.ExtractToDirectory(localDirectory);
-					}
-					catch
-					{
-						// If deployment fails - start it again.
-						_windowsServices.Start(serviceName);
-
-						throw;
-					}
-
-					try
-					{
-						_windowsServices.Start(serviceName);
-					}
-					catch (Exception ex)
-					{
-						return BadRequest($"Service deployed but service failed to start: {ex}");
-					}	
+					zip.ExtractToDirectory(localDirectory);
 				}
+				catch
+				{
+				    if (exists)
+				    {
+                        // If deployment fails - start it again.
+                        _windowsServices.Start(serviceName);
+                    }
+
+					throw;
+				}
+
+			    if (exists)
+			    {
+                    try
+                    {
+                        _windowsServices.Start(serviceName);
+                    }
+                    catch (Exception ex)
+                    {
+                        return BadRequest($"Service deployed but service failed to start: {ex}");
+                    }
+                }
 			}
 
+            // TODO: Return with a detailed description of the progress (e.g. if the service does not exist - make sure to let users know how to create it)
 			return Ok();
 		}
 

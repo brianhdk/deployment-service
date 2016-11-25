@@ -100,16 +100,16 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
-    <Reference Include="Vertica.Integration, Version=1.10.6165.29369, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Vertica.Integration.1.10.6165.29369\lib\net451\Vertica.Integration.dll</HintPath>
+    <Reference Include="Vertica.Integration, Version=1.10.6173.21237, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Vertica.Integration.1.10.6173.21237\lib\net451\Vertica.Integration.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Vertica.Integration.Host, Version=1.10.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Vertica.Integration.Host.1.10.0.0\lib\net451\Vertica.Integration.Host.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Vertica.Integration.WebApi, Version=1.10.6165.29372, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Vertica.Integration.WebApi.1.10.6165.29372\lib\net451\Vertica.Integration.WebApi.dll</HintPath>
+    <Reference Include="Vertica.Integration.WebApi, Version=1.10.6173.21241, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Vertica.Integration.WebApi.1.10.6173.21241\lib\net451\Vertica.Integration.WebApi.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Vertica.Utilities_v4, Version=4.4.0.0, Culture=neutral, processorArchitecture=MSIL">

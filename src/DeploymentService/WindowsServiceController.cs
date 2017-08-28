@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -114,7 +115,21 @@ namespace Vertica.DeploymentService
 			    {
                     try
                     {
-                        _windowsServices.Start(serviceName);
+                        //The service might take more than the 30 seconds to start that the OS expects. Retry a few times, if that happens.
+                        Policy
+                            .Handle<InvalidOperationException>(ex =>
+                                ex.InnerException is Win32Exception
+                                && ex.InnerException?.Message.Contains("The service did not respond to the start or control request in a timely fashion") == true)
+                            .WaitAndRetry(new[]
+                            {
+                                TimeSpan.FromSeconds(5),
+                                TimeSpan.FromSeconds(10),
+                                TimeSpan.FromSeconds(15)
+                            })
+                            .Execute(() =>
+                            {
+                                _windowsServices.Start(serviceName);
+                            });
                     }
                     catch (Exception ex)
                     {

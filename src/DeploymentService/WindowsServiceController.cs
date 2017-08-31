@@ -85,7 +85,21 @@ namespace Vertica.DeploymentService
                 bool exists = _windowsServices.Exists(serviceName);
 
 			    if (exists)
-                    _windowsServices.Stop(serviceName, TimeSpan.FromSeconds(10));
+			    {
+			        //The service might take more than 10 seconds to stop. Retry a few times, if that happens.
+			        Policy
+			            .Handle<System.ServiceProcess.TimeoutException>()
+			            .WaitAndRetry(new[]
+			            {
+			                TimeSpan.FromSeconds(5),
+			                TimeSpan.FromSeconds(10),
+			                TimeSpan.FromSeconds(15)
+			            })
+			            .Execute(() =>
+			            {
+			                _windowsServices.Stop(serviceName, TimeSpan.FromSeconds(10));
+                        });
+			    }
 
                 var backup = new DirectoryInfo($@"{directory.Parent?.FullName}\Backups");
                 backup.Create();

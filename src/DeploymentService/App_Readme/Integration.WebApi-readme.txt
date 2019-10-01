@@ -3,6 +3,38 @@ To get started, modify your Program.cs as shown below to begin working with this
 
 Also make sure to visit the Project Home on https://github.com/vertica-as/integration-service for further documentation.
 
+In app.config, configure the URL for WebApi:
+
+<add key="WebApi.Url" value="http://localhost:8900" />
+
+It is highly recommended to integrate WebApi with the LiteServer-functionality:
+
+namespace YourNameSpace
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            IntegrationStartup.Run(args, application => application
+                .UseLiteServer()
+                .UseWebApi(webApi => webApi
+                    .AddToLiteServer()));
+        }
+    }
+}
+
+.exe LiteServerHost
+.exe LiteServerHost -service:install
+
+You can also run WebApi directly:
+
+.exe WebApiHost
+.exe WebApiHost -service:install
+
+---
+
+If you do not wish to use the LiteServer-functionality, this is the only configuration you need:
+
 using Vertica.Integration.WebApi;
 
 namespace YourNameSpace
@@ -20,5 +52,4 @@ namespace YourNameSpace
 Spin up the WebApi server by running the following command: WebApiHost
 
 .exe WebApiHost
-.exe WebApiHost -url:http://localhost:8123
-.exe WebApiHost -url:http://localhost:8123 -service:install
+.exe WebApiHost -service:install

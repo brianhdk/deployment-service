@@ -1,5 +1,6 @@
 using System;
 using Vertica.Integration;
+using Vertica.Integration.ConsoleHost;
 
 namespace Vertica.DeploymentService
 {
@@ -7,7 +8,9 @@ namespace Vertica.DeploymentService
 	{
 		public static void Run(string[] args, Action<ApplicationConfiguration> application = null)
 		{
-			using (IApplicationContext context = ApplicationContext.Create(cfg => cfg.Change(application)))
+			using (IApplicationContext context = ApplicationContext.Create(cfg => cfg
+				.UseConsoleHost()
+				.Change(application)))
 			{
 				context.Execute(args);
 			}

@@ -59,8 +59,7 @@ namespace Vertica.DeploymentService
 	    {
 	        get
 	        {
-	            bool basedOnSetting;
-	            string url = _httpServerFactory.GetOrGenerateUrl(out basedOnSetting);
+                string url = _httpServerFactory.GetOrGenerateUrl(out bool basedOnSetting);
 
 	            if (!basedOnSetting)
 	                throw new InvalidOperationException(@"You need to specify a WebApi url - do that in the app.config:
@@ -74,13 +73,20 @@ namespace Vertica.DeploymentService
 		{
 			if (_windowsServices.Exists(WindowsServiceName))
 			{
-				if (_windowsServices.GetStatus(WindowsServiceName) != ServiceControllerStatus.Running)
-					_windowsServices.Start(WindowsServiceName);
+                ServiceControllerStatus serviceStatus = _windowsServices.GetStatus(WindowsServiceName);
 
+                if (serviceStatus != ServiceControllerStatus.Running)
+                {
+                    _consoleWriter.WriteLine($"Starting windows service '{WindowsServiceDisplayName}' ('{WindowsServiceName}')");
+
+                    _windowsServices.Start(WindowsServiceName);
+                }
+
+                _consoleWriter.WriteLine($"Windows service '{WindowsServiceDisplayName}' ('{WindowsServiceName}') has status {serviceStatus}.");
 				return;
 			}
 
-			_consoleWriter.WriteLine("Installing Vertica Deployment Service");
+			_consoleWriter.WriteLine($"Installing {WindowsServiceDisplayName} as windows service");
 			_consoleWriter.WriteLine();
 
 			var configuration = new WindowsServiceConfiguration(WindowsServiceName, ExePath, "-service")
@@ -93,6 +99,7 @@ namespace Vertica.DeploymentService
 			try
 			{
 				_windowsServices.Start(WindowsServiceName);
+                _consoleWriter.WriteLine($"Windows service '{WindowsServiceDisplayName}' ('{WindowsServiceName}') started.");
 			}
 			catch (Exception ex)
 			{
@@ -165,6 +172,6 @@ namespace Vertica.DeploymentService
 
 		private Func<IDisposable> Starter => () => _liteServerFactory.Create();
 
-		private static string ExePath => Assembly.GetEntryAssembly().Location;
+		private static string ExePath => Assembly.GetEntryAssembly()?.Location;
 	}
 }

@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -100,7 +101,7 @@ namespace Vertica.DeploymentService
 			using (Stream stream = await firstFile.ReadAsStreamAsync())
 			using (ZipArchive zip = new ZipArchive(stream, ZipArchiveMode.Read))
 			{
-                await StopService(token, serviceName);
+                await StopService(serviceName, token);
 
                 await BackupPreviousVersion(token, directory, backup);
 
@@ -109,7 +110,7 @@ namespace Vertica.DeploymentService
 
                 try
                 {
-                    _windowsServices.Start(serviceName);
+                    await StartService(serviceName, token);
                 }
                 catch (Exception ex)
                 {
@@ -129,6 +130,74 @@ namespace Vertica.DeploymentService
 
 		    return Ok(_windowsServices.GetStatus(serviceName));
 		}
+
+        [HttpGet]
+		[Route("start")]
+		public async Task<IHttpActionResult> Start(CancellationToken cancellationToken, [FromUri] string serviceName = null)
+        {
+            if (string.IsNullOrWhiteSpace(serviceName))
+                return BadRequest($"Missing required value for querystring '{nameof(serviceName)}'.");
+
+            if (!_windowsServices.Exists(serviceName))
+                return BadRequest($"Service '{serviceName}' does not exist.");
+
+            await StartService(serviceName, cancellationToken);
+
+            return Ok();
+        }
+
+        [HttpGet]
+		[Route("stop")]
+		public async Task<IHttpActionResult> Stop(CancellationToken cancellationToken, [FromUri] string serviceName = null)
+		{
+            if (string.IsNullOrWhiteSpace(serviceName))
+                return BadRequest($"Missing required value for querystring '{nameof(serviceName)}'.");
+
+            if (!_windowsServices.Exists(serviceName))
+                return BadRequest($"Service '{serviceName}' does not exist.");
+
+            await StopService(serviceName, cancellationToken);
+
+			return Ok();
+		}
+
+        private Task StartService(string serviceName, CancellationToken cancellationToken)
+        {
+            return Policy
+                .HandleInner<Win32Exception>(ex => ex.Message.Contains("The service did not respond to the start or control request in a timely fashion"))
+                .WaitAndRetryAsync(new[]
+                {
+                    TimeSpan.FromSeconds(5),
+                    TimeSpan.FromSeconds(10),
+                    TimeSpan.FromSeconds(15)
+                })
+                .ExecuteAsync(ct =>
+                {
+                    _windowsServices.Start(serviceName);
+
+                    return Task.CompletedTask;
+
+                }, cancellationToken);
+        }
+
+        private Task StopService(string serviceName, CancellationToken cancellationToken)
+        {
+            return Policy
+                .Handle<System.ServiceProcess.TimeoutException>()
+                .WaitAndRetryAsync(new[]
+                {
+                    TimeSpan.FromSeconds(5),
+                    TimeSpan.FromSeconds(10),
+                    TimeSpan.FromSeconds(15)
+                })
+                .ExecuteAsync(ct =>
+                {
+                    _windowsServices.Stop(serviceName, TimeSpan.FromSeconds(10));
+
+                    return Task.CompletedTask;
+
+                }, cancellationToken);
+        }
 
         private void CleanupPreviousBackups(DirectoryInfo backup)
         {
@@ -169,40 +238,5 @@ namespace Vertica.DeploymentService
 
                 }, token);
         }
-
-        private Task StopService(CancellationToken token, string serviceName)
-        {
-            return Policy
-                .Handle<Exception>()
-                .WaitAndRetryAsync(new[]
-                {
-                    TimeSpan.FromSeconds(5)
-                })
-                .ExecuteAsync(ct =>
-                {
-                    // Stop the existing service
-                    _windowsServices.Stop(serviceName, TimeSpan.FromSeconds(10));
-
-                    return Task.CompletedTask;
-                }, token);
-        }
-
-        [HttpGet]
-		[Route("start")]
-		public IHttpActionResult Start(string serviceName)
-		{
-			_windowsServices.Start(serviceName);
-
-			return Ok();
-		}
-
-		[HttpGet]
-		[Route("stop")]
-		public IHttpActionResult Stop(string serviceName)
-		{
-			_windowsServices.Stop(serviceName);
-
-			return Ok();
-		}
-	}
+    }
 }

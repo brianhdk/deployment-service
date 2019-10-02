@@ -80,13 +80,15 @@ namespace Vertica.DeploymentService
                     _consoleWriter.WriteLine($"Starting windows service '{WindowsServiceDisplayName}' ('{WindowsServiceName}')");
 
                     _windowsServices.Start(WindowsServiceName);
+
+                    serviceStatus = _windowsServices.GetStatus(WindowsServiceName);
                 }
 
                 _consoleWriter.WriteLine($"Windows service '{WindowsServiceDisplayName}' ('{WindowsServiceName}') has status {serviceStatus}.");
 				return;
 			}
 
-			_consoleWriter.WriteLine($"Installing {WindowsServiceDisplayName} as windows service");
+			_consoleWriter.WriteLine($"Installing '{WindowsServiceDisplayName}' ('{WindowsServiceName}') as windows service");
 			_consoleWriter.WriteLine();
 
 			var configuration = new WindowsServiceConfiguration(WindowsServiceName, ExePath, "-service")
@@ -99,6 +101,7 @@ namespace Vertica.DeploymentService
 			try
 			{
 				_windowsServices.Start(WindowsServiceName);
+
                 _consoleWriter.WriteLine($"Windows service '{WindowsServiceDisplayName}' ('{WindowsServiceName}') started.");
 			}
 			catch (Exception ex)

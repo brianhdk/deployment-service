@@ -68,10 +68,10 @@ namespace Vertica.DeploymentService
             return Ok(_windowsServices.GetStatus(serviceName));
 	    }
 
-		[HttpPost]
-		[Route("")]
-		public async Task<IHttpActionResult> Install(CancellationToken token, [FromUri] string serviceName = null, [FromUri] string localDirectory = null)
-		{
+        [HttpPost]
+        [Route("")]
+        public async Task<IHttpActionResult> Install(CancellationToken token, [FromUri] string serviceName = null, [FromUri] string localDirectory = null)
+        {
             if (string.IsNullOrWhiteSpace(serviceName))
                 return BadRequest($"Missing required value for querystring '{nameof(serviceName)}'.");
 
@@ -84,23 +84,29 @@ namespace Vertica.DeploymentService
             if (!Directory.Exists(localDirectory))
                 return BadRequest($"Directory '{localDirectory}' does not exist.");
 
-			var streamProvider = new MultipartMemoryStreamProvider();
-			await Request.Content.ReadAsMultipartAsync(streamProvider, token);
+            if (!Request.Content.IsMimeMultipartContent("form-data"))
+            {
+                return BadRequest($@"Request is invalid. Content is not MIME multipart content. 
+{string.Join(Environment.NewLine, Request.Headers.Select(x => $"{x.Key}: {string.Join(", ", x.Value)}"))}
+{string.Join(Environment.NewLine, Request.Content.Headers.Select(x => $"{x.Key}: {string.Join(", ", x.Value)}"))}");
+            }
 
-			HttpContent firstFile = streamProvider.Contents.FirstOrDefault();
+            var streamProvider = await Request.Content.ReadAsMultipartAsync(new MultipartMemoryStreamProvider(), token);
 
-			if (firstFile == null)
-				return BadRequest("Missing required file in request.");
+            HttpContent firstFile = streamProvider.Contents.FirstOrDefault();
 
-			var directory = new DirectoryInfo(localDirectory);
+            if (firstFile == null)
+                return BadRequest("Missing required file in request.");
+
+            var directory = new DirectoryInfo(localDirectory);
 
             // Ensure backup folder
             var backup = new DirectoryInfo($@"{directory.Parent?.FullName}\Backups");
             backup.Create();
 
-			using (Stream stream = await firstFile.ReadAsStreamAsync())
-			using (ZipArchive zip = new ZipArchive(stream, ZipArchiveMode.Read))
-			{
+            using (Stream stream = await firstFile.ReadAsStreamAsync())
+            using (ZipArchive zip = new ZipArchive(stream, ZipArchiveMode.Read))
+            {
                 await StopService(serviceName, token);
 
                 await BackupPreviousVersion(token, directory, backup);
@@ -128,8 +134,8 @@ namespace Vertica.DeploymentService
                 CleanupPreviousBackups(backup);
             }
 
-		    return Ok(_windowsServices.GetStatus(serviceName));
-		}
+            return Ok(_windowsServices.GetStatus(serviceName));
+        }
 
         [HttpGet]
 		[Route("start")]

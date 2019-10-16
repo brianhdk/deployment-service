@@ -129,7 +129,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="Vertica.Integration, Version=1.39.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Vertica.Integration.1.39.0\lib\net472\Vertica.Integration.dll</HintPath>
+      <HintPath>..\..\packages\Vertica.Integration.1.39.0\lib\net462\Vertica.Integration.dll</HintPath>
     </Reference>
     <Reference Include="Vertica.Integration.WebApi, Version=1.20.7.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Vertica.Integration.WebApi.1.20.7\lib\net462\Vertica.Integration.WebApi.dll</HintPath>
@@ -140,6 +140,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DeploymentHelperHost.cs" />
+    <Compile Include="LogRequestAndResponseHandler.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="WindowsServiceController.cs" />

@@ -170,7 +170,8 @@ namespace Vertica.DeploymentService
         private Task StartService(string serviceName, CancellationToken cancellationToken)
         {
             return Policy
-                .HandleInner<Win32Exception>(ex => ex.Message.Contains("The service did not respond to the start or control request in a timely fashion"))
+                .Handle<System.ServiceProcess.TimeoutException>()
+                .OrInner<Win32Exception>(ex => ex.Message.Contains("The service did not respond to the start or control request in a timely fashion"))
                 .WaitAndRetryAsync(new[]
                 {
                     TimeSpan.FromSeconds(5),
@@ -228,6 +229,7 @@ namespace Vertica.DeploymentService
         {
             return Policy
                 .Handle<IOException>()
+                .Or<UnauthorizedAccessException>()
                 .WaitAndRetryAsync(new[]
                 {
                     TimeSpan.FromSeconds(5),

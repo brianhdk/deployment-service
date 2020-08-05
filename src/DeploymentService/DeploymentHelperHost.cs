@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.ServiceProcess;
+using Vertica.Integration;
 using Vertica.Integration.Domain.LiteServer;
 using Vertica.Integration.Infrastructure;
 using Vertica.Integration.Infrastructure.Extensions;
@@ -10,29 +11,54 @@ using Vertica.Integration.Infrastructure.Windows;
 using Vertica.Integration.Model.Hosting;
 using Vertica.Integration.Model.Hosting.Handlers;
 using Vertica.Integration.WebApi.Infrastructure;
+using Vertica.Utilities.Extensions.StringExt;
 
 namespace Vertica.DeploymentService
 {
 	public class DeploymentHelperHost : IHost
 	{
-		private const string WindowsServiceName = "VerticaDeploymentService";
-
 	    private readonly IWindowsServiceHandler _windowsServiceHandler;
 		private readonly IWindowsServices _windowsServices;
 		private readonly ILiteServerFactory _liteServerFactory;
 	    private readonly IConsoleWriter _consoleWriter;
 	    private readonly IShutdown _shutdown;
 	    private readonly IHttpServerFactory _httpServerFactory;
+        private readonly IRuntimeSettings _settings;
 
-	    public DeploymentHelperHost(IWindowsFactory windows, ILiteServerFactory liteServerFactory, IConsoleWriter consoleWriter, IShutdown shutdown, IHttpServerFactory httpServerFactory, IWindowsServiceHandler windowsServiceHandler)
+		public DeploymentHelperHost(
+            IWindowsFactory windows, ILiteServerFactory liteServerFactory,
+            IConsoleWriter consoleWriter, IShutdown shutdown, IHttpServerFactory httpServerFactory,
+            IWindowsServiceHandler windowsServiceHandler, IRuntimeSettings settings)
 		{
 	        _shutdown = shutdown;
 	        _httpServerFactory = httpServerFactory;
 	        _windowsServiceHandler = windowsServiceHandler;
-	        _liteServerFactory = liteServerFactory;
+            _settings = settings;
+            _liteServerFactory = liteServerFactory;
 		    _consoleWriter = consoleWriter;
 		    _windowsServices = windows.WindowsServices();
 		}
+
+        private string WindowsServiceName
+        {
+            get
+            {
+                string serviceName = _settings["WindowsService.Name"]?.Trim().NullIfEmpty();
+
+                return serviceName ?? "VerticaDeploymentService";
+            }
+        }
+
+        private string WindowsServiceDisplayName
+        {
+            get
+			{
+                string displayName = _settings["WindowsService.DisplayName"]?.Trim().NullIfEmpty();
+
+                return displayName ?? "Vertica Deployment Service";
+			}
+        }
+
 
 		public bool CanHandle(HostArguments args)
 		{
@@ -112,8 +138,6 @@ namespace Vertica.DeploymentService
 				_consoleWriter.WriteLine(ex.ToString());
 			}
 		}
-
-	    private static string WindowsServiceDisplayName => "Vertica Deployment Service";
 
 	    private bool UninstallWindowsService(HostArguments args)
 		{

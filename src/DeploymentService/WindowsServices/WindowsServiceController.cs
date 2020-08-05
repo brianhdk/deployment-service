@@ -12,9 +12,9 @@ using Polly;
 using Vertica.Integration;
 using Vertica.Integration.Infrastructure.Windows;
 
-namespace Vertica.DeploymentService
+namespace Vertica.DeploymentService.WindowsServices
 {
-	[RoutePrefix("windowsservice")]
+	[RoutePrefix("windowsService")]
 	public class WindowsServiceController : ApiController
 	{
         private readonly IRuntimeSettings _settings;

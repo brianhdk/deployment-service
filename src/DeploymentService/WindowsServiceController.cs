@@ -109,7 +109,8 @@ namespace Vertica.DeploymentService
             {
                 await StopService(serviceName, token);
 
-                await BackupPreviousVersion(token, directory, backup);
+                // Move the current version to the backup folder
+                await Wrap(() => directory.MoveTo($@"{backup.FullName}\Backup_{directory.Name}_{DateTime.Now:yyyyMMddHHmmss}"), token);
 
                 // Extract the new version
                 zip.ExtractToDirectory(localDirectory);
@@ -128,7 +129,7 @@ namespace Vertica.DeploymentService
                     ZipFile.CreateFromDirectory(directory.FullName, $@"{backup.FullName}\{directory.Name}.zip");
 
                     // Delete the folder
-                    directory.Delete(recursive: true);
+                    await Wrap(() => directory.Delete(recursive: true), token);
                 }
 
                 CleanupPreviousBackups(backup);
@@ -225,7 +226,7 @@ namespace Vertica.DeploymentService
                 backupFile.Delete();
         }
 
-        private static Task BackupPreviousVersion(CancellationToken token, DirectoryInfo directory, DirectoryInfo backup)
+        private static Task Wrap(Action ioAction, CancellationToken token)
         {
             return Policy
                 .Handle<IOException>()
@@ -239,8 +240,7 @@ namespace Vertica.DeploymentService
                 })
                 .ExecuteAsync(ct =>
                 {
-                    // Move the current version to the backup folder
-                    directory.MoveTo($@"{backup.FullName}\Backup_{directory.Name}_{DateTime.Now:yyyyMMddHHmmss}");
+                    ioAction();
 
                     return Task.CompletedTask;
 

@@ -10,12 +10,13 @@ namespace Vertica.DeploymentService.HAProxy
     {
         [HttpGet]
         [Route("status")]
-        public IHttpActionResult GetStatus([FromUri] HAProxyRequest request)
+        public IHttpActionResult GetStatus([FromUri] HAProxyRequest request = null)
         {
-            if (request == null) throw new ArgumentNullException(nameof(request));
+            if (!IsValid(request, out IHttpActionResult invalidResult))
+                return invalidResult;
 
-            if (!request.Validate(out string errorMessage))
-                return BadRequest(errorMessage);
+            if (request == null)
+                throw new InvalidOperationException();
 
             HaProxyClient client = request.CreateClient();
 
@@ -30,35 +31,37 @@ namespace Vertica.DeploymentService.HAProxy
 
         [HttpGet]
         [Route("server")]
-        public IHttpActionResult GetServer([FromUri] HAProxyBackendServerRequest request)
+        public IHttpActionResult GetServer([FromUri] HAProxyBackendServerRequest request = null)
         {
             return PerformBackendServerAction(request, client => 
-                client.ShowBackendServer(request.Name, request.BackendName));
+                client.ShowBackendServer(request?.BackendName, request?.Name));
         }
 
         [HttpGet]
         [Route("server/start")]
-        public IHttpActionResult StartServer([FromUri] HAProxyBackendServerRequest request)
+        public IHttpActionResult StartServer([FromUri] HAProxyBackendServerRequest request = null)
         {
             return PerformBackendServerAction(request, client => 
-                client.EnableServer(request.Name, request.BackendName));
+                client.EnableServer(request?.BackendName, request?.Name));
         }
 
         [HttpGet]
         [Route("server/stop")]
-        public IHttpActionResult StopServer([FromUri] HAProxyBackendServerRequest request)
+        public IHttpActionResult StopServer([FromUri] HAProxyBackendServerRequest request = null)
         {
             return PerformBackendServerAction(request, client => 
-                client.DisableServer(request.Name, request.BackendName));
+                client.DisableServer(request?.BackendName, request?.Name));
         }
 
         private IHttpActionResult PerformBackendServerAction(HAProxyBackendServerRequest request, Func<HaProxyClient, BackendServer> action)
         {
-            if (request == null) throw new ArgumentNullException(nameof(request));
             if (action == null) throw new ArgumentNullException(nameof(action));
 
-            if (!request.Validate(out string errorMessage))
-                return BadRequest(errorMessage);
+            if (!IsValid(request, out IHttpActionResult invalidResult))
+                return invalidResult;
+
+            if (request == null)
+                throw new InvalidOperationException();
 
             HaProxyClient client = request.CreateClient();
 
@@ -68,6 +71,24 @@ namespace Vertica.DeploymentService.HAProxy
                 return NotFound();
 
             return Ok(backendServer);
+        }
+
+        private bool IsValid(HAProxyRequest request, out IHttpActionResult invalidResult)
+        {
+            if (request == null)
+            {
+                invalidResult = BadRequest(HAProxyRequest.HostNameOrIpAddressRequiredValidationMessage);
+                return false;
+            }
+
+            if (!request.Validate(out string errorMessage))
+            {
+                invalidResult = BadRequest(errorMessage);
+                return false;
+            }
+
+            invalidResult = null;
+            return true;
         }
     }
 }

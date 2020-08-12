@@ -65,8 +65,8 @@ namespace Vertica.DeploymentService.WindowsServices
                 _windowsServices.Stop(serviceName);
             }
 
-            return Ok(_windowsServices.GetStatus(serviceName));
-	    }
+            return GetStatus(serviceName);
+        }
 
         [HttpPost]
         [Route("")]
@@ -135,7 +135,7 @@ namespace Vertica.DeploymentService.WindowsServices
                 CleanupPreviousBackups(backup);
             }
 
-            return Ok(_windowsServices.GetStatus(serviceName));
+            return GetStatus(serviceName);
         }
 
         [HttpGet]
@@ -150,7 +150,7 @@ namespace Vertica.DeploymentService.WindowsServices
 
             await StartService(serviceName, cancellationToken);
 
-            return Ok();
+            return GetStatus(serviceName);
         }
 
         [HttpGet]
@@ -165,8 +165,8 @@ namespace Vertica.DeploymentService.WindowsServices
 
             await StopService(serviceName, cancellationToken);
 
-			return Ok();
-		}
+            return GetStatus(serviceName);
+        }
 
         private Task StartService(string serviceName, CancellationToken cancellationToken)
         {

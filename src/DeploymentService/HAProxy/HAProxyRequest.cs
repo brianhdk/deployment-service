@@ -13,7 +13,7 @@ namespace Vertica.DeploymentService.HAProxy
         {
             if (string.IsNullOrWhiteSpace(HostNameOrIpAddress))
             {
-                errorMessage = $"Missing required value for querystring '{nameof(HostNameOrIpAddress)}'.";
+                errorMessage = HostNameOrIpAddressRequiredValidationMessage;
                 return false;
             }
 
@@ -37,5 +37,8 @@ namespace Vertica.DeploymentService.HAProxy
 
             return new HaProxyClient(HostNameOrIpAddress, PortNumber.Value);
         }
+
+        public static string HostNameOrIpAddressRequiredValidationMessage =>
+            $"Missing required value for querystring '{nameof(HostNameOrIpAddress)}'.";
     }
 }
